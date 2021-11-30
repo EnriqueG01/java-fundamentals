@@ -34,22 +34,40 @@ public class CoffeeMachine {
         System.out.printf("%d g of coffee beans\n", totalCoffee);
     }
     
-    public static int getCupsWithAvailableIngredients(int availableWater, int availableMilk, int availableCoffee) {
+    public static int getCupsWithAvailableIngredients(int[] resourcesPerCup, int[] availableResources) {
         //how many cups the machine can make
-        int waterOneCup = 200;
-        int milkOneCup = 50;
-        int coffeeOneCup = 15;
-        int cupsByWater = availableWater / waterOneCup;
-        int cupsByMilk = availableMilk / milkOneCup;
-        int cupsByCoffee = availableCoffee / coffeeOneCup;
-        if (cupsByWater > 0 && cupsByMilk > 0 && cupsByCoffee > 0) {
-            int[] cupsArray = {cupsByWater, cupsByMilk, cupsByCoffee};
-            Arrays.sort(cupsArray);
-            return cupsArray[0];
+        //if there are more than zero disposable cups, continue
+        if (availableResources[3] > 0) {
+            int waterOneCup = resourcesPerCup[0];
+            int milkOneCup = resourcesPerCup[1];
+            int coffeeBeansOneCup = resourcesPerCup[2];
+            int cupsByWater = availableResources[0] / waterOneCup;
+            int cupsByMilk = milkOneCup == 0 ? 1000 : availableResources[1] / milkOneCup;
+            int cupsByCoffee = availableResources[2] / coffeeBeansOneCup;
+
+            if (cupsByWater > 0) {
+                if (cupsByMilk > 0) {
+                    if (cupsByCoffee > 0) {
+                        int[] cupsArray = {cupsByWater, cupsByMilk, cupsByCoffee};
+                        Arrays.sort(cupsArray);
+                        if (cupsArray[0] <= availableResources[3]) {
+                            return cupsArray[0];
+                        } else {
+                            return availableResources[3];
+                        }
+                    } else {
+                        System.out.println("Sorry, not enough coffee beans!");
+                    }
+                } else {
+                    System.out.println("Sorry, not enough milk!");
+                }
+            } else {
+                System.out.println("Sorry, not enough water!");
+            }
         } else {
-            //System.out.println("");
-            return 0;
+            System.out.println("Sorry, not enough disposable cups!");
         }
+        return 0;
     }
     
     public static void compareWantedVsAvailableCups(int availableCups, int wantedCups) {
@@ -68,7 +86,7 @@ public class CoffeeMachine {
         System.out.printf("%d ml of milk\n", availableResources[1]);
         System.out.printf("%d g of coffee beans\n", availableResources[2]);
         System.out.printf("%d disposable cups\n", availableResources[3]);
-        System.out.printf("$%d of money\n", availableResources[4]);
+        System.out.printf("$%d of money\n\n", availableResources[4]);
     }
 
     public static int takeMoney(int money) {
@@ -77,39 +95,51 @@ public class CoffeeMachine {
     }
 
     public static int[] buyCoffee(Scanner sc, int[] availableResources) {
-        System.out.println("What do you want to buy? 1 - espresso, 2 - latte, 3 - cappuccino: ");
-        int coffeeType = sc.nextInt();
+        System.out.println("What do you want to buy? 1 - espresso, 2 - latte, 3 - cappuccino, back - to main menu:");
+        String coffeeType = sc.next();
         int coffeePrice = 0;
         int waterNeededPerCup = 0;
         int milkNeededPerCup = 0;
         int coffeeBeansNeededPerCup = 0;
+        boolean makeModifications = true;
         switch (coffeeType) {
-            case 1:
+            case "1":
                 waterNeededPerCup = 250;
                 coffeeBeansNeededPerCup = 16;
                 coffeePrice = 4;
                 break;
-            case 2:
+            case "2":
                 waterNeededPerCup = 350;
                 milkNeededPerCup = 75;
                 coffeeBeansNeededPerCup = 20;
                 coffeePrice = 7;
                 break;
-            case 3:
+            case "3":
                 waterNeededPerCup = 200;
                 milkNeededPerCup = 100;
                 coffeeBeansNeededPerCup = 12;
                 coffeePrice = 6;
                 break;
+            case "back":
+                makeModifications = false;
+                break;
             default:
                 System.out.println("Wrong input!");
+                makeModifications = false;
                 break;
         }
-        availableResources[0] -= waterNeededPerCup;
-        availableResources[1] -= milkNeededPerCup;
-        availableResources[2] -= coffeeBeansNeededPerCup;
-        availableResources[3]--;
-        availableResources[4] += coffeePrice;
+        if (makeModifications) {
+            int[] resourcesPerCup = {waterNeededPerCup, waterNeededPerCup, coffeeBeansNeededPerCup};
+            boolean canPrepareCoffee = getCupsWithAvailableIngredients(resourcesPerCup, availableResources) > 0 ? true: false;
+            if (canPrepareCoffee) {
+                System.out.println("I have enough resources, making you a coffee!");
+                availableResources[0] -= waterNeededPerCup;
+                availableResources[1] -= milkNeededPerCup;
+                availableResources[2] -= coffeeBeansNeededPerCup;
+                availableResources[3]--;
+                availableResources[4] += coffeePrice;
+            }
+        }
         return availableResources;
     }
         
@@ -131,23 +161,28 @@ public class CoffeeMachine {
         compareWantedVsAvailableCups(availableCups, wantedCups);
         */
         int[] availableResources = {400, 540, 120, 9, 550}; //water, milk, coffee beans, disposable cups, money
-        printMachineState(availableResources);
-        System.out.println("\nWrite action (buy, fill, take): ");
-        String action = sc.next();
-        switch (action) {
-            case "buy":
-                availableResources = buyCoffee(sc, availableResources);
-                break;
-            case "fill":
-                availableResources = fillMachine(sc, availableResources);
-                break;
-            case "take":
-                availableResources[4] = takeMoney(availableResources[4]);
-                break;
-            default:
-                System.out.println("Wrong input! MF");
-                break;
+        while (true) {
+            System.out.println("Write action (buy, fill, take, remaining, exit): ");
+            String action = sc.next();
+            switch (action) {
+                case "buy":
+                    availableResources = buyCoffee(sc, availableResources);
+                    break;
+                case "fill":
+                    availableResources = fillMachine(sc, availableResources);
+                    break;
+                case "take":
+                    availableResources[4] = takeMoney(availableResources[4]);
+                    break;
+                case "remaining":
+                    printMachineState(availableResources);
+                    break;
+                case "exit":
+                    return;
+                default:
+                    System.out.println("Wrong input! MF");
+                    break;
+            }
         }
-        printMachineState(availableResources);
     }
 }
